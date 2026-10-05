@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>R-Powered Palette Generator & Previewer</title>
-    
-    <!-- 1. ADD THIS LINE: This unblocks webR's background security restriction on GitHub Pages -->
-    <script src="https://jsdelivr.net"></script>
-
     <style>
         body {
             font-family: sans-serif;
@@ -21,6 +17,7 @@
             border: 1px solid #e1e4e6;
             border-radius: 6px;
         }
+        /* Layout logic from your original template */
         .color-row {
             display: flex;
             flex-wrap: wrap;
@@ -48,7 +45,7 @@
     <h1>🎨 R-Powered Palette Generator</h1>
     <p id="status">⏳ Loading R Engine into your browser... Please wait.</p>
 
-    <!-- Input Ordered Triple -->
+    <!-- 1. Input Ordered Triple -->
     <div class="input-group">
         <h3>1. Enter RGB Triple</h3>
         <label>R: <input type="number" id="rInput" min="0" max="255" value="255" style="width: 50px;"></label>
@@ -57,43 +54,30 @@
         <button id="generateBtn" disabled>Show Colors</button>
     </div>
 
-    <!-- Textbox that gets populated by R automatically -->
+    <!-- 2. Textbox that gets populated by R automatically -->
     <div style="margin-bottom: 20px;">
         <h3>2. Generated R Output String</h3>
         <textarea id="outputBox" rows="4" style="width: 100%; max-width: 600px;" placeholder="The string output from your R function will appear here..."></textarea>
     </div>
 
-    <!-- Output display canvas -->
+    <!-- 3. Output display canvas -->
     <h3>3. Visual Palette Rows</h3>
     <div id="displayContainer"></div>
 
     <!-- webR & Pipeline Script -->
     <script type="module">
-        // 2. Import from the valid 'latest' URL
         import { WebR } from 'https://r-wasm.org';
         
-        // 3. Initialize webR cleanly without broken options
+        // Initialize webR engine
         const webR = new WebR();
-        
-        try {
-            await webR.init();
-            document.getElementById("status").innerText = "🔴 R Engine Status: Ready!";
-            document.getElementById("generateBtn").disabled = false;
+        await webR.init();
+        document.getElementById("status").innerText = "🔴 R Engine Status: Ready!";
+        document.getElementById("generateBtn").disabled = false;
 
-            // Fetch your local palette.R file
-            const response = await fetch('palette.R');
-            
-            if (!response.ok) {
-                throw new Error(`Could not find palette.R file (Status: ${response.status})`);
-            }
-            
-            const rCode = await response.text();
-            await webR.evalRVoid(rCode);
-            
-        } catch (error) {
-            console.error("Initialization Failed:", error);
-            document.getElementById("status").innerHTML = `❌ <b>Error Loading App:</b> ${error.message}`;
-        }
+        // Fetch your local palette.R file
+        const response = await fetch('palette.R');
+        const rCode = await response.text();
+        await webR.evalRVoid(rCode);
 
         // Core execution function connecting inputs to R and outputs to JS visualization
         async function handlePipelineExecution() {
@@ -104,7 +88,7 @@
             // Execute your R code function
             const result = await webR.evalR(`generate_palettes(${r}, ${g}, ${b})`);
             const outputStringObj = await result.toJs();
-            const rawString = outputStringObj.values[0]; // Adjusted to cleanly grab the first array value
+            const rawString = outputStringObj.values[0]; // Extract the raw string string from R
 
             // Automatically set the text box content
             document.getElementById("outputBox").value = rawString;
@@ -116,17 +100,21 @@
         // Your original HTML parsing and drawing logic combined
         function renderSquaresFromText(textData) {
             const container = document.getElementById("displayContainer");
-            container.innerHTML = ""; 
+            container.innerHTML = ""; // Clear old canvas rows
 
+            // Split the raw string into rows using your custom forward-slash '/' character
             const rows = textData.split('/');
 
             rows.forEach(rowText => {
+                // Find all valid hex codes within this row segment
                 const hexCodes = rowText.match(/#[0-9A-Fa-f]{6}/g);
                 
                 if (hexCodes && hexCodes.length > 0) {
+                    // Create a row container to host these blocks horizontally
                     const rowDiv = document.createElement("div");
                     rowDiv.className = "color-row";
 
+                    // Create each separate square block
                     hexCodes.forEach(hex => {
                         const square = document.createElement("div");
                         square.className = "color-square";
