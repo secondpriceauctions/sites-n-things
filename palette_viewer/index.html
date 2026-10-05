@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R-Powered Palette Generator & Previewer</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 30px;
+            max-width: 800px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f7f9fa;
+            border: 1px solid #e1e4e6;
+            border-radius: 6px;
+        }
+        /* Layout logic from your original template */
+        .color-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .color-square {
+            width: 70px;
+            height: 70px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 4px;
+            font-size: 10px;
+            font-family: monospace;
+            color: #fff;
+            text-shadow: 1px 1px 1px #000;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎨 R-Powered Palette Generator</h1>
+    <p id="status">⏳ Loading R Engine into your browser... Please wait.</p>
+
+    <!-- 1. Input Ordered Triple -->
+    <div class="input-group">
+        <h3>1. Enter RGB Triple</h3>
+        <label>R: <input type="number" id="rInput" min="0" max="255" value="255" style="width: 50px;"></label>
+        <label>G: <input type="number" id="gInput" min="0" max="255" value="0" style="width: 50px;"></label>
+        <label>B: <input type="number" id="bInput" min="0" max="255" value="0" style="width: 50px;"></label>
+        <button id="generateBtn" disabled>Show Colors</button>
+    </div>
+
+    <!-- 2. Textbox that gets populated by R automatically -->
+    <div style="margin-bottom: 20px;">
+        <h3>2. Generated R Output String</h3>
+        <textarea id="outputBox" rows="4" style="width: 100%; max-width: 600px;" placeholder="The string output from your R function will appear here..."></textarea>
+    </div>
+
+    <!-- 3. Output display canvas -->
+    <h3>3. Visual Palette Rows</h3>
+    <div id="displayContainer"></div>
+
+    <!-- webR & Pipeline Script -->
+    <script type="module">
+        import { WebR } from 'https://r-wasm.org';
+        
+        // Initialize webR engine
+        const webR = new WebR();
+        await webR.init();
+        document.getElementById("status").innerText = "🔴 R Engine Status: Ready!";
+        document.getElementById("generateBtn").disabled = false;
+
+        // Fetch your local palette.R file
+        const response = await fetch('palette.R');
+        const rCode = await response.text();
+        await webR.evalRVoid(rCode);
+
+        // Core execution function connecting inputs to R and outputs to JS visualization
+        async function handlePipelineExecution() {
+            const r = document.getElementById("rInput").value;
+            const g = document.getElementById("gInput").value;
+            const b = document.getElementById("bInput").value;
+
+            // Execute your R code function
+            const result = await webR.evalR(`generate_palettes(${r}, ${g}, ${b})`);
+            const outputStringObj = await result.toJs();
+            const rawString = outputStringObj.values[0]; // Extract the raw string string from R
+
+            // Automatically set the text box content
+            document.getElementById("outputBox").value = rawString;
+
+            // Instantly pass the string to your original square-drawing loop
+            renderSquaresFromText(rawString);
+        }
+
+        // Your original HTML parsing and drawing logic combined
+        function renderSquaresFromText(textData) {
+            const container = document.getElementById("displayContainer");
+            container.innerHTML = ""; // Clear old canvas rows
+
+            // Split the raw string into rows using your custom forward-slash '/' character
+            const rows = textData.split('/');
+
+            rows.forEach(rowText => {
+                // Find all valid hex codes within this row segment
+                const hexCodes = rowText.match(/#[0-9A-Fa-f]{6}/g);
+                
+                if (hexCodes && hexCodes.length > 0) {
+                    // Create a row container to host these blocks horizontally
+                    const rowDiv = document.createElement("div");
+                    rowDiv.className = "color-row";
+
+                    // Create each separate square block
+                    hexCodes.forEach(hex => {
+                        const square = document.createElement("div");
+                        square.className = "color-square";
+                        square.style.backgroundColor = hex;
+                        square.innerText = hex;
+                        rowDiv.appendChild(square);
+                    });
+
+                    container.appendChild(rowDiv);
+                }
+            });
+        }
+
+        // Attach listener to button
+        document.getElementById("generateBtn").addEventListener("click", handlePipelineExecution);
+    </script>
+</body>
+</html>
