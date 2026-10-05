@@ -68,16 +68,30 @@
     <script type="module">
         import { WebR } from 'https://r-wasm.org';
         
-        // Initialize webR engine
-        const webR = new WebR();
-        await webR.init();
-        document.getElementById("status").innerText = "🔴 R Engine Status: Ready!";
-        document.getElementById("generateBtn").disabled = false;
+        // FORCE WEBR INTO COMPATIBILITY MODE FOR GITHUB PAGES
+        // channelType: 2 forces 'PostMessage' mode, bypassing cross-origin security rules
+        const webR = new WebR({ channelType: 2 }); 
+        
+        try {
+            await webR.init();
+            document.getElementById("status").innerText = "🔴 R Engine Status: Ready!";
+            document.getElementById("generateBtn").disabled = false;
 
-        // Fetch your local palette.R file
-        const response = await fetch('palette.R');
-        const rCode = await response.text();
-        await webR.evalRVoid(rCode);
+            // Fetch your local palette.R file
+            const response = await fetch('palette.R');
+            
+            // Safety check: Make sure palette.R actually exists
+            if (!response.ok) {
+                throw new Error(`Could not find palette.R file (Status: ${response.status})`);
+            }
+            
+            const rCode = await response.text();
+            await webR.evalRVoid(rCode);
+            
+        } catch (error) {
+            console.error("Initialization Failed:", error);
+            document.getElementById("status").innerHTML = `❌ <b>Error Loading App:</b> ${error.message}<br><small>Press F12 and look at the Console tab for more technical clues.</small>`;
+        }
 
         // Core execution function connecting inputs to R and outputs to JS visualization
         async function handlePipelineExecution() {
@@ -88,7 +102,7 @@
             // Execute your R code function
             const result = await webR.evalR(`generate_palettes(${r}, ${g}, ${b})`);
             const outputStringObj = await result.toJs();
-            const rawString = outputStringObj.values[0]; // Extract the raw string string from R
+            const rawString = outputStringObj.values; 
 
             // Automatically set the text box content
             document.getElementById("outputBox").value = rawString;
@@ -100,21 +114,17 @@
         // Your original HTML parsing and drawing logic combined
         function renderSquaresFromText(textData) {
             const container = document.getElementById("displayContainer");
-            container.innerHTML = ""; // Clear old canvas rows
+            container.innerHTML = ""; 
 
-            // Split the raw string into rows using your custom forward-slash '/' character
             const rows = textData.split('/');
 
             rows.forEach(rowText => {
-                // Find all valid hex codes within this row segment
                 const hexCodes = rowText.match(/#[0-9A-Fa-f]{6}/g);
                 
                 if (hexCodes && hexCodes.length > 0) {
-                    // Create a row container to host these blocks horizontally
                     const rowDiv = document.createElement("div");
                     rowDiv.className = "color-row";
 
-                    // Create each separate square block
                     hexCodes.forEach(hex => {
                         const square = document.createElement("div");
                         square.className = "color-square";
