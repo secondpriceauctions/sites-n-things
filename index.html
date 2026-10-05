@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>R-Powered Palette Generator & Previewer</title>
+    
+    <!-- 1. ADD THIS LINE: This unblocks webR's background security restriction on GitHub Pages -->
+    <script src="https://jsdelivr.net"></script>
+
     <style>
         body {
             font-family: sans-serif;
@@ -17,7 +21,6 @@
             border: 1px solid #e1e4e6;
             border-radius: 6px;
         }
-        /* Layout logic from your original template */
         .color-row {
             display: flex;
             flex-wrap: wrap;
@@ -45,7 +48,7 @@
     <h1>🎨 R-Powered Palette Generator</h1>
     <p id="status">⏳ Loading R Engine into your browser... Please wait.</p>
 
-    <!-- 1. Input Ordered Triple -->
+    <!-- Input Ordered Triple -->
     <div class="input-group">
         <h3>1. Enter RGB Triple</h3>
         <label>R: <input type="number" id="rInput" min="0" max="255" value="255" style="width: 50px;"></label>
@@ -54,23 +57,23 @@
         <button id="generateBtn" disabled>Show Colors</button>
     </div>
 
-    <!-- 2. Textbox that gets populated by R automatically -->
+    <!-- Textbox that gets populated by R automatically -->
     <div style="margin-bottom: 20px;">
         <h3>2. Generated R Output String</h3>
         <textarea id="outputBox" rows="4" style="width: 100%; max-width: 600px;" placeholder="The string output from your R function will appear here..."></textarea>
     </div>
 
-    <!-- 3. Output display canvas -->
+    <!-- Output display canvas -->
     <h3>3. Visual Palette Rows</h3>
     <div id="displayContainer"></div>
 
     <!-- webR & Pipeline Script -->
     <script type="module">
-        import { WebR } from 'https://webr.r-wasm.org/latest/webr.mjs';
+        // 2. Import from the valid 'latest' URL
+        import { WebR } from 'https://r-wasm.org';
         
-        // FORCE WEBR INTO COMPATIBILITY MODE FOR GITHUB PAGES
-        // channelType: 2 forces 'PostMessage' mode, bypassing cross-origin security rules
-        const webR = new WebR({ channelType: ChannelType.PostMessage });
+        // 3. Initialize webR cleanly without broken options
+        const webR = new WebR();
         
         try {
             await webR.init();
@@ -80,7 +83,6 @@
             // Fetch your local palette.R file
             const response = await fetch('palette.R');
             
-            // Safety check: Make sure palette.R actually exists
             if (!response.ok) {
                 throw new Error(`Could not find palette.R file (Status: ${response.status})`);
             }
@@ -90,7 +92,7 @@
             
         } catch (error) {
             console.error("Initialization Failed:", error);
-            document.getElementById("status").innerHTML = `❌ <b>Error Loading App:</b> ${error.message}<br><small>Press F12 and look at the Console tab for more technical clues.</small>`;
+            document.getElementById("status").innerHTML = `❌ <b>Error Loading App:</b> ${error.message}`;
         }
 
         // Core execution function connecting inputs to R and outputs to JS visualization
@@ -102,7 +104,7 @@
             // Execute your R code function
             const result = await webR.evalR(`generate_palettes(${r}, ${g}, ${b})`);
             const outputStringObj = await result.toJs();
-            const rawString = outputStringObj.values; 
+            const rawString = outputStringObj.values[0]; // Adjusted to cleanly grab the first array value
 
             // Automatically set the text box content
             document.getElementById("outputBox").value = rawString;
