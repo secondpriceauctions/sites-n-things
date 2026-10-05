@@ -66,11 +66,11 @@
 
     <!-- webR & Pipeline Script -->
     <script type="module">
-        import { WebR } from 'https://r-wasm.org';
+        import { WebR } from 'https://webr.r-wasm.org/latest/webr.mjs';
         
         // FORCE WEBR INTO COMPATIBILITY MODE FOR GITHUB PAGES
         // channelType: 2 forces 'PostMessage' mode, bypassing cross-origin security rules
-        const webR = new WebR({ channelType: 2 }); 
+        const webR = new WebR({ channelType: ChannelType.PostMessage });
         
         try {
             await webR.init();
